@@ -1,0 +1,1380 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LibraCore — Library Management System</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=DM+Sans:wght@300;400;500&family=DM+Mono&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #1a1208;
+    --paper: #f5f0e8;
+    --cream: #ede8d8;
+    --gold: #c8902a;
+    --gold-light: #e8b84b;
+    --rust: #9b3a1a;
+    --sage: #4a6741;
+    --slate: #3d4a5c;
+    --muted: #8a7f6e;
+    --border: #d4c9b0;
+    --shadow: rgba(26,18,8,0.12);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--paper);
+    color: var(--ink);
+    min-height: 100vh;
+  }
+
+  /* ── Grain overlay ── */
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* ── Layout ── */
+  .shell { display: flex; min-height: 100vh; position: relative; z-index: 1; }
+
+  /* ── Sidebar ── */
+  .sidebar {
+    width: 260px; flex-shrink: 0;
+    background: var(--ink);
+    display: flex; flex-direction: column;
+    padding: 0;
+    position: sticky; top: 0; height: 100vh;
+  }
+
+  .logo-area {
+    padding: 32px 24px 28px;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+  }
+
+  .logo-icon {
+    width: 42px; height: 42px;
+    background: var(--gold);
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    margin-bottom: 12px;
+    font-size: 22px;
+  }
+
+  .logo-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 20px; font-weight: 700;
+    color: #fff;
+    letter-spacing: 0.5px;
+  }
+
+  .logo-sub {
+    font-size: 11px; color: var(--muted);
+    letter-spacing: 1.5px; text-transform: uppercase;
+    margin-top: 2px;
+  }
+
+  nav { flex: 1; padding: 20px 12px; }
+
+  .nav-section {
+    font-size: 10px; letter-spacing: 2px; text-transform: uppercase;
+    color: rgba(255,255,255,0.3);
+    padding: 0 12px 8px;
+    margin-top: 16px;
+  }
+
+  .nav-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 14px;
+    border-radius: 8px;
+    cursor: pointer;
+    color: rgba(255,255,255,0.6);
+    font-size: 14px; font-weight: 400;
+    transition: all 0.2s;
+    margin-bottom: 2px;
+    border: none; background: none; width: 100%; text-align: left;
+  }
+
+  .nav-item .icon { font-size: 16px; width: 20px; text-align: center; }
+  .nav-item:hover { background: rgba(255,255,255,0.07); color: #fff; }
+  .nav-item.active {
+    background: var(--gold);
+    color: var(--ink);
+    font-weight: 500;
+  }
+
+  .sidebar-footer {
+    padding: 20px 24px;
+    border-top: 1px solid rgba(255,255,255,0.08);
+    font-size: 12px; color: rgba(255,255,255,0.3);
+  }
+
+  /* ── Main ── */
+  .main { flex: 1; display: flex; flex-direction: column; overflow-x: hidden; }
+
+  /* ── Top bar ── */
+  .topbar {
+    background: var(--paper);
+    border-bottom: 1px solid var(--border);
+    padding: 16px 36px;
+    display: flex; align-items: center; justify-content: space-between;
+    position: sticky; top: 0; z-index: 10;
+  }
+
+  .topbar-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 22px; font-weight: 600;
+  }
+
+  .topbar-actions { display: flex; gap: 10px; align-items: center; }
+
+  .search-bar {
+    display: flex; align-items: center; gap: 8px;
+    background: var(--cream);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 14px;
+  }
+
+  .search-bar input {
+    border: none; background: none;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px; color: var(--ink);
+    outline: none; width: 200px;
+  }
+
+  /* ── Content ── */
+  .content { padding: 32px 36px; flex: 1; }
+
+  /* ── Stats row ── */
+  .stats-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-bottom: 32px;
+  }
+
+  .stat-card {
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px 22px;
+    position: relative;
+    overflow: hidden;
+    animation: fadeUp 0.4s ease both;
+  }
+
+  .stat-card::before {
+    content: '';
+    position: absolute; top: 0; left: 0; right: 0;
+    height: 3px;
+  }
+
+  .stat-card.gold::before  { background: var(--gold); }
+  .stat-card.rust::before  { background: var(--rust); }
+  .stat-card.sage::before  { background: var(--sage); }
+  .stat-card.slate::before { background: var(--slate); }
+
+  .stat-label {
+    font-size: 11px; letter-spacing: 1.5px; text-transform: uppercase;
+    color: var(--muted); margin-bottom: 8px;
+  }
+
+  .stat-value {
+    font-family: 'Playfair Display', serif;
+    font-size: 36px; font-weight: 700;
+    line-height: 1;
+  }
+
+  .stat-sub { font-size: 12px; color: var(--muted); margin-top: 4px; }
+
+  /* ── Section ── */
+  .section {
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 24px;
+    animation: fadeUp 0.5s ease both;
+  }
+
+  .section-header {
+    padding: 18px 22px;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+
+  .section-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 17px; font-weight: 600;
+  }
+
+  /* ── Table ── */
+  .data-table { width: 100%; border-collapse: collapse; }
+
+  .data-table th {
+    font-size: 11px; letter-spacing: 1.2px; text-transform: uppercase;
+    color: var(--muted);
+    padding: 12px 22px;
+    text-align: left;
+    background: var(--cream);
+    border-bottom: 1px solid var(--border);
+    font-weight: 500;
+  }
+
+  .data-table td {
+    padding: 13px 22px;
+    font-size: 14px;
+    border-bottom: 1px solid rgba(212,201,176,0.4);
+  }
+
+  .data-table tr:last-child td { border-bottom: none; }
+  .data-table tr:hover td { background: rgba(245,240,232,0.6); }
+
+  /* ── Badges ── */
+  .badge {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 11px; font-weight: 500;
+    letter-spacing: 0.5px;
+  }
+
+  .badge-green  { background: #e8f5e8; color: #2d7a2d; }
+  .badge-red    { background: #fdeaea; color: #9b2020; }
+  .badge-gold   { background: #fdf3e0; color: #8a5e10; }
+  .badge-slate  { background: #e8ecf0; color: #3d4a5c; }
+
+  /* ── Buttons ── */
+  .btn {
+    padding: 8px 18px;
+    border-radius: 7px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px; font-weight: 500;
+    cursor: pointer;
+    border: none;
+    transition: all 0.2s;
+  }
+
+  .btn-primary {
+    background: var(--gold);
+    color: var(--ink);
+  }
+  .btn-primary:hover { background: var(--gold-light); }
+
+  .btn-ghost {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--ink);
+  }
+  .btn-ghost:hover { background: var(--cream); }
+
+  .btn-danger { background: #fdeaea; color: var(--rust); border: 1px solid #f5c5c5; }
+  .btn-danger:hover { background: #f8d0d0; }
+
+  .btn-sm { padding: 5px 12px; font-size: 12px; }
+
+  /* ── Form ── */
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; padding: 22px; }
+  .form-full { grid-column: 1 / -1; }
+
+  .form-group { display: flex; flex-direction: column; gap: 6px; }
+
+  label {
+    font-size: 12px; font-weight: 500;
+    letter-spacing: 0.5px;
+    color: var(--muted);
+    text-transform: uppercase;
+  }
+
+  input, select, textarea {
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    padding: 9px 13px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    color: var(--ink);
+    background: var(--paper);
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  input:focus, select:focus, textarea:focus {
+    border-color: var(--gold);
+    background: #fff;
+    box-shadow: 0 0 0 3px rgba(200,144,42,0.1);
+  }
+
+  .form-actions {
+    padding: 16px 22px;
+    border-top: 1px solid var(--border);
+    display: flex; gap: 10px; justify-content: flex-end;
+  }
+
+  /* ── Tabs ── */
+  .tabs { display: flex; gap: 0; border-bottom: 1px solid var(--border); }
+
+  .tab {
+    padding: 12px 22px;
+    font-size: 13px; font-weight: 500;
+    cursor: pointer;
+    border: none; background: none;
+    color: var(--muted);
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    transition: all 0.2s;
+    font-family: 'DM Sans', sans-serif;
+  }
+
+  .tab:hover { color: var(--ink); }
+  .tab.active { color: var(--gold); border-bottom-color: var(--gold); }
+
+  /* ── Page views ── */
+  .page { display: none; }
+  .page.active { display: block; }
+
+  /* ── Notification ── */
+  .toast {
+    position: fixed; top: 20px; right: 20px;
+    padding: 14px 22px;
+    border-radius: 10px;
+    font-size: 14px; font-weight: 500;
+    z-index: 9999;
+    animation: slideIn 0.3s ease;
+    box-shadow: 0 8px 24px var(--shadow);
+    max-width: 320px;
+  }
+
+  .toast-success { background: #e8f5e8; color: #1a5c1a; border-left: 3px solid var(--sage); }
+  .toast-error   { background: #fdeaea; color: #7a1a1a; border-left: 3px solid var(--rust); }
+
+  /* ── Modal ── */
+  .modal-backdrop {
+    display: none;
+    position: fixed; inset: 0;
+    background: rgba(26,18,8,0.5);
+    z-index: 100;
+    align-items: center; justify-content: center;
+  }
+  .modal-backdrop.open { display: flex; }
+
+  .modal {
+    background: #fff;
+    border-radius: 14px;
+    width: 520px;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 20px 60px rgba(26,18,8,0.3);
+    animation: modalIn 0.25s ease;
+  }
+
+  .modal-header {
+    padding: 22px 24px 18px;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+
+  .modal-title { font-family: 'Playfair Display', serif; font-size: 18px; font-weight: 600; }
+  .modal-close { background: none; border: none; font-size: 20px; cursor: pointer; color: var(--muted); }
+  .modal-close:hover { color: var(--ink); }
+
+  /* ── Loan card ── */
+  .loan-card {
+    display: flex; align-items: center; gap: 14px;
+    padding: 14px 22px;
+    border-bottom: 1px solid rgba(212,201,176,0.4);
+  }
+
+  .loan-card:last-child { border-bottom: none; }
+
+  .loan-avatar {
+    width: 38px; height: 38px;
+    border-radius: 50%;
+    background: var(--gold);
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Playfair Display', serif;
+    font-weight: 700;
+    font-size: 16px;
+    color: var(--ink);
+    flex-shrink: 0;
+  }
+
+  .loan-info { flex: 1; }
+  .loan-title { font-size: 14px; font-weight: 500; }
+  .loan-sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+  /* ── Progress bar ── */
+  .progress { background: var(--cream); border-radius: 4px; height: 6px; overflow: hidden; }
+  .progress-fill { height: 100%; border-radius: 4px; background: var(--gold); transition: width 0.5s ease; }
+
+  /* ── Animations ── */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateX(20px); }
+    to   { opacity: 1; transform: translateX(0); }
+  }
+
+  @keyframes modalIn {
+    from { opacity: 0; transform: scale(0.95); }
+    to   { opacity: 1; transform: scale(1); }
+  }
+
+  /* ── Mono ── */
+  code { font-family: 'DM Mono', monospace; font-size: 12px; }
+
+  .empty-state {
+    text-align: center; padding: 48px 24px;
+    color: var(--muted);
+  }
+  .empty-state .icon { font-size: 40px; margin-bottom: 12px; }
+  .empty-state p { font-size: 14px; }
+
+  @media (max-width: 900px) {
+    .stats-row { grid-template-columns: 1fr 1fr; }
+    .sidebar { width: 220px; }
+    .content { padding: 24px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="shell">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="logo-area">
+      <div class="logo-icon">📚</div>
+      <div class="logo-title">LibraCore</div>
+      <div class="logo-sub">Management System</div>
+    </div>
+
+    <nav>
+      <div class="nav-section">Overview</div>
+      <button class="nav-item active" onclick="navigate('dashboard', this)">
+        <span class="icon">🏛️</span> Dashboard
+      </button>
+
+      <div class="nav-section">Catalog</div>
+      <button class="nav-item" onclick="navigate('books', this)">
+        <span class="icon">📖</span> Books
+      </button>
+      <button class="nav-item" onclick="navigate('members', this)">
+        <span class="icon">👤</span> Members
+      </button>
+
+      <div class="nav-section">Circulation</div>
+      <button class="nav-item" onclick="navigate('borrow', this)">
+        <span class="icon">↗️</span> Borrow Book
+      </button>
+      <button class="nav-item" onclick="navigate('return', this)">
+        <span class="icon">↩️</span> Return Book
+      </button>
+      <button class="nav-item" onclick="navigate('transactions', this)">
+        <span class="icon">📋</span> Transactions
+      </button>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div>C++ · File I/O · DSA · HTML</div>
+      <div style="margin-top:4px">v1.0.0 — LibraCore</div>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <div class="main">
+    <header class="topbar">
+      <div class="topbar-title" id="page-title">Dashboard</div>
+      <div class="topbar-actions">
+        <div class="search-bar">
+          <span>🔍</span>
+          <input type="text" id="global-search" placeholder="Search books, members…" oninput="globalSearch(this.value)">
+        </div>
+      </div>
+    </header>
+
+    <div class="content">
+
+      <!-- Dashboard -->
+      <div class="page active" id="page-dashboard">
+        <div class="stats-row">
+          <div class="stat-card gold">
+            <div class="stat-label">Total Books</div>
+            <div class="stat-value" id="stat-books">0</div>
+            <div class="stat-sub">Titles in catalog</div>
+          </div>
+          <div class="stat-card rust">
+            <div class="stat-label">Total Members</div>
+            <div class="stat-value" id="stat-members">0</div>
+            <div class="stat-sub">Registered members</div>
+          </div>
+          <div class="stat-card sage">
+            <div class="stat-label">Active Loans</div>
+            <div class="stat-value" id="stat-loans">0</div>
+            <div class="stat-sub">Books out now</div>
+          </div>
+          <div class="stat-card slate">
+            <div class="stat-label">Available Copies</div>
+            <div class="stat-value" id="stat-avail">0</div>
+            <div class="stat-sub">Ready to borrow</div>
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+          <!-- Active loans -->
+          <div class="section">
+            <div class="section-header">
+              <div class="section-title">Active Loans</div>
+              <button class="btn btn-ghost btn-sm" onclick="navigate('transactions',document.querySelector('.nav-item:nth-child(7)'))">See all</button>
+            </div>
+            <div id="dash-loans">
+              <div class="empty-state"><div class="icon">📭</div><p>No active loans</p></div>
+            </div>
+          </div>
+
+          <!-- Genre distribution -->
+          <div class="section">
+            <div class="section-header">
+              <div class="section-title">Genre Distribution</div>
+            </div>
+            <div id="dash-genres" style="padding:20px 22px"></div>
+          </div>
+        </div>
+
+        <!-- Top books -->
+        <div class="section">
+          <div class="section-header">
+            <div class="section-title">Most Borrowed Books</div>
+          </div>
+          <table class="data-table">
+            <thead><tr>
+              <th>#</th><th>Title</th><th>Author</th><th>Genre</th><th>Total Borrows</th>
+            </tr></thead>
+            <tbody id="dash-top-books">
+              <tr><td colspan="5"><div class="empty-state"><p>No data yet</p></div></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Books -->
+      <div class="page" id="page-books">
+        <div class="tabs">
+          <button class="tab active" onclick="switchTab('books','list',this)">All Books</button>
+          <button class="tab" onclick="switchTab('books','add',this)">+ Add Book</button>
+        </div>
+
+        <!-- List -->
+        <div id="books-tab-list" style="margin-top:16px">
+          <div class="section">
+            <div class="section-header">
+              <div class="section-title">Book Catalog</div>
+              <div style="display:flex;gap:8px">
+                <select id="filter-genre" onchange="renderBooks()" style="font-size:13px;padding:6px 10px">
+                  <option value="">All Genres</option>
+                </select>
+                <select id="filter-avail" onchange="renderBooks()" style="font-size:13px;padding:6px 10px">
+                  <option value="">All Status</option>
+                  <option value="available">Available</option>
+                  <option value="unavailable">Unavailable</option>
+                </select>
+              </div>
+            </div>
+            <table class="data-table">
+              <thead><tr>
+                <th>ID</th><th>Title</th><th>Author</th><th>Genre</th><th>Year</th><th>Copies</th><th>Status</th><th>Actions</th>
+              </tr></thead>
+              <tbody id="books-table-body"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Add -->
+        <div id="books-tab-add" style="display:none;margin-top:16px">
+          <div class="section">
+            <div class="section-header">
+              <div class="section-title">Add New Book</div>
+            </div>
+            <div class="form-grid">
+              <div class="form-group form-full">
+                <label>Title</label>
+                <input type="text" id="book-title" placeholder="e.g. The Great Gatsby">
+              </div>
+              <div class="form-group">
+                <label>Author</label>
+                <input type="text" id="book-author" placeholder="e.g. F. Scott Fitzgerald">
+              </div>
+              <div class="form-group">
+                <label>ISBN</label>
+                <input type="text" id="book-isbn" placeholder="e.g. 978-0-7432-7356-5">
+              </div>
+              <div class="form-group">
+                <label>Genre</label>
+                <input type="text" id="book-genre" placeholder="e.g. Fiction, Science, History…">
+              </div>
+              <div class="form-group">
+                <label>Publication Year</label>
+                <input type="number" id="book-year" placeholder="e.g. 1925" min="1000" max="2100">
+              </div>
+              <div class="form-group">
+                <label>Number of Copies</label>
+                <input type="number" id="book-copies" placeholder="e.g. 3" min="1">
+              </div>
+            </div>
+            <div class="form-actions">
+              <button class="btn btn-ghost" onclick="clearBookForm()">Clear</button>
+              <button class="btn btn-primary" onclick="addBook()">Add Book</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Members -->
+      <div class="page" id="page-members">
+        <div class="tabs">
+          <button class="tab active" onclick="switchTab('members','list',this)">All Members</button>
+          <button class="tab" onclick="switchTab('members','add',this)">+ Add Member</button>
+        </div>
+
+        <div id="members-tab-list" style="margin-top:16px">
+          <div class="section">
+            <div class="section-header">
+              <div class="section-title">Members</div>
+            </div>
+            <table class="data-table">
+              <thead><tr>
+                <th>ID</th><th>Name</th><th>Email</th><th>Phone</th><th>Joined</th><th>Borrowed</th><th>Actions</th>
+              </tr></thead>
+              <tbody id="members-table-body"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div id="members-tab-add" style="display:none;margin-top:16px">
+          <div class="section">
+            <div class="section-header">
+              <div class="section-title">Register New Member</div>
+            </div>
+            <div class="form-grid">
+              <div class="form-group form-full">
+                <label>Full Name</label>
+                <input type="text" id="mem-name" placeholder="e.g. Rahul Sharma">
+              </div>
+              <div class="form-group">
+                <label>Email</label>
+                <input type="email" id="mem-email" placeholder="rahul@example.com">
+              </div>
+              <div class="form-group">
+                <label>Phone</label>
+                <input type="text" id="mem-phone" placeholder="+91 98765 43210">
+              </div>
+              <div class="form-group form-full">
+                <label>Address</label>
+                <input type="text" id="mem-address" placeholder="House No, Street, City">
+              </div>
+            </div>
+            <div class="form-actions">
+              <button class="btn btn-ghost" onclick="clearMemberForm()">Clear</button>
+              <button class="btn btn-primary" onclick="addMember()">Register Member</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Borrow -->
+      <div class="page" id="page-borrow">
+        <div class="section">
+          <div class="section-header">
+            <div class="section-title">Borrow a Book</div>
+          </div>
+          <div class="form-grid">
+            <div class="form-group">
+              <label>Member</label>
+              <select id="borrow-member">
+                <option value="">— Select Member —</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Book</label>
+              <select id="borrow-book">
+                <option value="">— Select Book —</option>
+              </select>
+            </div>
+          </div>
+          <div id="borrow-preview" style="padding:0 22px 16px;display:none">
+            <div style="background:var(--cream);border-radius:8px;padding:14px 18px;font-size:13px;color:var(--muted)">
+              <div id="borrow-preview-text"></div>
+            </div>
+          </div>
+          <div class="form-actions">
+            <button class="btn btn-primary" onclick="borrowBook()">✓ Confirm Borrow</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Return -->
+      <div class="page" id="page-return">
+        <div class="section">
+          <div class="section-header">
+            <div class="section-title">Return a Book</div>
+          </div>
+          <div class="form-grid">
+            <div class="form-group">
+              <label>Member</label>
+              <select id="return-member" onchange="loadReturnBooks()">
+                <option value="">— Select Member —</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Book to Return</label>
+              <select id="return-book">
+                <option value="">— Select Book —</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-actions">
+            <button class="btn btn-primary" onclick="returnBook()">↩ Confirm Return</button>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="section-header">
+            <div class="section-title">Currently Active Loans</div>
+          </div>
+          <div id="active-loans-list"></div>
+        </div>
+      </div>
+
+      <!-- Transactions -->
+      <div class="page" id="page-transactions">
+        <div class="section">
+          <div class="section-header">
+            <div class="section-title">Transaction History</div>
+            <select id="tx-filter" onchange="renderTransactions()" style="font-size:13px;padding:6px 10px">
+              <option value="all">All</option>
+              <option value="active">Active Loans</option>
+              <option value="returned">Returned</option>
+            </select>
+          </div>
+          <table class="data-table">
+            <thead><tr>
+              <th>TX#</th><th>Member</th><th>Book</th><th>Borrowed</th><th>Returned</th><th>Status</th>
+            </tr></thead>
+            <tbody id="tx-table-body"></tbody>
+          </table>
+        </div>
+      </div>
+
+    </div><!-- /content -->
+  </div><!-- /main -->
+</div><!-- /shell -->
+
+<!-- Edit Book Modal -->
+<div class="modal-backdrop" id="modal-edit-book">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Edit Book</div>
+      <button class="modal-close" onclick="closeModal('modal-edit-book')">✕</button>
+    </div>
+    <div class="form-grid">
+      <input type="hidden" id="edit-book-id">
+      <div class="form-group form-full">
+        <label>Title</label><input type="text" id="edit-book-title">
+      </div>
+      <div class="form-group">
+        <label>Author</label><input type="text" id="edit-book-author">
+      </div>
+      <div class="form-group">
+        <label>Genre</label><input type="text" id="edit-book-genre">
+      </div>
+      <div class="form-group">
+        <label>Year</label><input type="number" id="edit-book-year">
+      </div>
+      <div class="form-group">
+        <label>Total Copies</label><input type="number" id="edit-book-copies">
+      </div>
+    </div>
+    <div class="form-actions">
+      <button class="btn btn-ghost" onclick="closeModal('modal-edit-book')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveEditBook()">Save Changes</button>
+    </div>
+  </div>
+</div>
+
+<!-- Edit Member Modal -->
+<div class="modal-backdrop" id="modal-edit-member">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Edit Member</div>
+      <button class="modal-close" onclick="closeModal('modal-edit-member')">✕</button>
+    </div>
+    <div class="form-grid">
+      <input type="hidden" id="edit-mem-id">
+      <div class="form-group form-full">
+        <label>Name</label><input type="text" id="edit-mem-name">
+      </div>
+      <div class="form-group">
+        <label>Email</label><input type="email" id="edit-mem-email">
+      </div>
+      <div class="form-group">
+        <label>Phone</label><input type="text" id="edit-mem-phone">
+      </div>
+      <div class="form-group form-full">
+        <label>Address</label><input type="text" id="edit-mem-address">
+      </div>
+    </div>
+    <div class="form-actions">
+      <button class="btn btn-ghost" onclick="closeModal('modal-edit-member')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveEditMember()">Save Changes</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Data store (mirrors C++ file-based persistence) ────────────────────────
+let db = {
+  books: [],
+  members: [],
+  transactions: [],
+  nextBookId: 1,
+  nextMemberId: 1,
+  nextTransactionId: 1
+};
+
+// ── Persistence (localStorage mirrors C++ file I/O) ───────────────────────
+function save() {
+  // In production this would POST to a C++ backend CGI/API
+  // Here we persist in localStorage as a demonstration layer
+  try {
+    const data = JSON.stringify(db);
+    const key = 'libracore_data';
+    // Store in sessionStorage for artifact environment
+    sessionStorage.setItem(key, data);
+  } catch(e) {}
+}
+
+function load() {
+  try {
+    const raw = sessionStorage.getItem('libracore_data');
+    if (raw) {
+      const saved = JSON.parse(raw);
+      db = saved;
+      return;
+    }
+  } catch(e) {}
+  // Seed demo data
+  seedData();
+}
+
+function seedData() {
+  const books = [
+    ['The Great Gatsby', 'F. Scott Fitzgerald', '978-0-7432-7356-5', 'Fiction', 1925, 4],
+    ['To Kill a Mockingbird', 'Harper Lee', '978-0-4464-9010-4', 'Fiction', 1960, 3],
+    ['A Brief History of Time', 'Stephen Hawking', '978-0-5533-4652-4', 'Science', 1988, 2],
+    ['Sapiens', 'Yuval Noah Harari', '978-0-0624-3965-4', 'History', 2011, 5],
+    ['The Art of War', 'Sun Tzu', '978-1-5901-5264-6', 'Philosophy', 2006, 3],
+    ['Clean Code', 'Robert C. Martin', '978-0-1323-5088-4', 'Technology', 2008, 2],
+    ['1984', 'George Orwell', '978-0-4520-2850-4', 'Fiction', 1949, 4],
+    ['Thinking, Fast and Slow', 'Daniel Kahneman', '978-0-3743-3348-1', 'Psychology', 2011, 2],
+  ];
+
+  books.forEach(([t,a,i,g,y,c]) => {
+    db.books.push({
+      id: db.nextBookId++, title:t, author:a, isbn:i,
+      genre:g, year:y, totalCopies:c, availableCopies:c
+    });
+  });
+
+  const members = [
+    ['Aarav Singh', 'aarav@email.com', '+91 98765 11111', 'Chandigarh, Punjab'],
+    ['Priya Sharma', 'priya@email.com', '+91 98765 22222', 'Amritsar, Punjab'],
+    ['Rohan Verma', 'rohan@email.com', '+91 98765 33333', 'Ludhiana, Punjab'],
+    ['Meera Nair', 'meera@email.com', '+91 98765 44444', 'Delhi, India'],
+  ];
+
+  members.forEach(([n,e,p,a]) => {
+    db.members.push({
+      id: db.nextMemberId++, name:n, email:e, phone:p,
+      address:a, joinDate: '2024-01-15', maxBorrow:3, borrowed:[]
+    });
+  });
+
+  // Demo transactions
+  borrowOp(1, 1);
+  borrowOp(1, 4);
+  borrowOp(2, 2);
+  returnOp(2, 2);
+  borrowOp(3, 6);
+  save();
+}
+
+// ── Core operations (mirror C++ Library class) ────────────────────────────
+function borrowOp(memberId, bookId) {
+  const m = db.members.find(x => x.id === memberId);
+  const b = db.books.find(x => x.id === bookId);
+  if (!m || !b) return false;
+  if (m.borrowed.length >= m.maxBorrow) return false;
+  if (b.availableCopies <= 0) return false;
+  if (m.borrowed.includes(bookId)) return false;
+
+  b.availableCopies--;
+  m.borrowed.push(bookId);
+  db.transactions.push({
+    id: db.nextTransactionId++,
+    memberId, bookId,
+    memberName: m.name, bookTitle: b.title,
+    borrowDate: today(), returnDate: '', returned: false
+  });
+  save();
+  return true;
+}
+
+function returnOp(memberId, bookId) {
+  const m = db.members.find(x => x.id === memberId);
+  const b = db.books.find(x => x.id === bookId);
+  const tx = db.transactions.find(t => t.memberId===memberId && t.bookId===bookId && !t.returned);
+  if (!m || !b || !tx) return false;
+
+  b.availableCopies++;
+  m.borrowed = m.borrowed.filter(id => id !== bookId);
+  tx.returned = true;
+  tx.returnDate = today();
+  save();
+  return true;
+}
+
+function today() {
+  return new Date().toISOString().split('T')[0];
+}
+
+// ── Navigation ─────────────────────────────────────────────────────────────
+function navigate(page, btn) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+  document.getElementById('page-' + page).classList.add('active');
+  if (btn) btn.classList.add('active');
+
+  const titles = {
+    dashboard: 'Dashboard', books: 'Books', members: 'Members',
+    borrow: 'Borrow Book', return: 'Return Book', transactions: 'Transactions'
+  };
+  document.getElementById('page-title').textContent = titles[page] || page;
+
+  if (page === 'dashboard') renderDashboard();
+  if (page === 'books') renderBooks();
+  if (page === 'members') renderMembers();
+  if (page === 'borrow') populateBorrowSelects();
+  if (page === 'return') { populateReturnSelects(); renderActiveLoans(); }
+  if (page === 'transactions') renderTransactions();
+}
+
+function switchTab(page, tab, btn) {
+  const tabs = document.querySelectorAll(`#page-${page} .tab`);
+  tabs.forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+
+  const panels = document.querySelectorAll(`[id^="${page}-tab-"]`);
+  panels.forEach(p => p.style.display = 'none');
+  document.getElementById(`${page}-tab-${tab}`).style.display = 'block';
+}
+
+// ── Dashboard ──────────────────────────────────────────────────────────────
+function renderDashboard() {
+  const activeLoans = db.transactions.filter(t => !t.returned);
+  const availCopies = db.books.reduce((s,b) => s + b.availableCopies, 0);
+
+  document.getElementById('stat-books').textContent = db.books.length;
+  document.getElementById('stat-members').textContent = db.members.length;
+  document.getElementById('stat-loans').textContent = activeLoans.length;
+  document.getElementById('stat-avail').textContent = availCopies;
+
+  // Active loans
+  const loanEl = document.getElementById('dash-loans');
+  if (activeLoans.length === 0) {
+    loanEl.innerHTML = '<div class="empty-state"><div class="icon">📭</div><p>No active loans</p></div>';
+  } else {
+    loanEl.innerHTML = activeLoans.slice(0,5).map(t => `
+      <div class="loan-card">
+        <div class="loan-avatar">${t.memberName[0]}</div>
+        <div class="loan-info">
+          <div class="loan-title">${esc(t.bookTitle)}</div>
+          <div class="loan-sub">${esc(t.memberName)} · Since ${t.borrowDate}</div>
+        </div>
+        <span class="badge badge-gold">Active</span>
+      </div>`).join('');
+  }
+
+  // Genre distribution
+  const genres = {};
+  db.books.forEach(b => { genres[b.genre] = (genres[b.genre]||0) + 1; });
+  const maxG = Math.max(...Object.values(genres), 1);
+  const genreEl = document.getElementById('dash-genres');
+  if (Object.keys(genres).length === 0) {
+    genreEl.innerHTML = '<div class="empty-state"><p>No data</p></div>';
+  } else {
+    genreEl.innerHTML = Object.entries(genres).map(([g,c]) => `
+      <div style="margin-bottom:14px">
+        <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:5px">
+          <span>${esc(g)}</span><span style="color:var(--muted)">${c} book${c>1?'s':''}</span>
+        </div>
+        <div class="progress">
+          <div class="progress-fill" style="width:${(c/maxG)*100}%"></div>
+        </div>
+      </div>`).join('');
+  }
+
+  // Top borrowed
+  const borrowCounts = {};
+  db.transactions.forEach(t => { borrowCounts[t.bookId] = (borrowCounts[t.bookId]||0) + 1; });
+  const sorted = [...db.books].sort((a,b) => (borrowCounts[b.id]||0) - (borrowCounts[a.id]||0)).slice(0,5);
+  const tbEl = document.getElementById('dash-top-books');
+  tbEl.innerHTML = sorted.map((b,i) => `
+    <tr>
+      <td><span style="color:var(--muted)">${i+1}</span></td>
+      <td><strong>${esc(b.title)}</strong></td>
+      <td>${esc(b.author)}</td>
+      <td><span class="badge badge-slate">${esc(b.genre)}</span></td>
+      <td>${borrowCounts[b.id]||0}</td>
+    </tr>`).join('') || '<tr><td colspan="5"><div class="empty-state"><p>No data</p></div></td></tr>';
+}
+
+// ── Books ──────────────────────────────────────────────────────────────────
+function renderBooks() {
+  const genre = document.getElementById('filter-genre').value;
+  const avail = document.getElementById('filter-avail').value;
+
+  // Populate genre filter
+  const genres = [...new Set(db.books.map(b => b.genre))].sort();
+  const genreEl = document.getElementById('filter-genre');
+  const cur = genreEl.value;
+  genreEl.innerHTML = '<option value="">All Genres</option>' +
+    genres.map(g => `<option value="${esc(g)}" ${g===cur?'selected':''}>${esc(g)}</option>`).join('');
+
+  let filtered = db.books;
+  if (genre) filtered = filtered.filter(b => b.genre === genre);
+  if (avail === 'available') filtered = filtered.filter(b => b.availableCopies > 0);
+  if (avail === 'unavailable') filtered = filtered.filter(b => b.availableCopies === 0);
+
+  const tbody = document.getElementById('books-table-body');
+  tbody.innerHTML = filtered.length === 0
+    ? '<tr><td colspan="8"><div class="empty-state"><div class="icon">📚</div><p>No books found</p></div></td></tr>'
+    : filtered.map(b => `
+      <tr>
+        <td><code>#${b.id}</code></td>
+        <td><strong>${esc(b.title)}</strong><div style="font-size:12px;color:var(--muted)">${esc(b.isbn)}</div></td>
+        <td>${esc(b.author)}</td>
+        <td><span class="badge badge-slate">${esc(b.genre)}</span></td>
+        <td>${b.year}</td>
+        <td>${b.availableCopies}/${b.totalCopies}</td>
+        <td><span class="badge ${b.availableCopies>0?'badge-green':'badge-red'}">${b.availableCopies>0?'Available':'Unavailable'}</span></td>
+        <td>
+          <button class="btn btn-ghost btn-sm" onclick="openEditBook(${b.id})">Edit</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteBook(${b.id})" style="margin-left:4px">Delete</button>
+        </td>
+      </tr>`).join('');
+}
+
+function addBook() {
+  const title  = document.getElementById('book-title').value.trim();
+  const author = document.getElementById('book-author').value.trim();
+  const isbn   = document.getElementById('book-isbn').value.trim();
+  const genre  = document.getElementById('book-genre').value.trim();
+  const year   = parseInt(document.getElementById('book-year').value);
+  const copies = parseInt(document.getElementById('book-copies').value);
+
+  if (!title||!author||!isbn||!genre||!year||!copies) return toast('Please fill all fields','error');
+  if (db.books.some(b => b.isbn === isbn)) return toast('ISBN already exists','error');
+
+  db.books.push({ id: db.nextBookId++, title, author, isbn, genre, year, totalCopies:copies, availableCopies:copies });
+  save();
+  clearBookForm();
+  switchTab('books','list',document.querySelector('#page-books .tab'));
+  renderBooks();
+  toast(`"${title}" added to catalog`);
+}
+
+function clearBookForm() {
+  ['book-title','book-author','book-isbn','book-genre','book-year','book-copies']
+    .forEach(id => document.getElementById(id).value = '');
+}
+
+function openEditBook(id) {
+  const b = db.books.find(x => x.id === id);
+  if (!b) return;
+  document.getElementById('edit-book-id').value = id;
+  document.getElementById('edit-book-title').value = b.title;
+  document.getElementById('edit-book-author').value = b.author;
+  document.getElementById('edit-book-genre').value = b.genre;
+  document.getElementById('edit-book-year').value = b.year;
+  document.getElementById('edit-book-copies').value = b.totalCopies;
+  openModal('modal-edit-book');
+}
+
+function saveEditBook() {
+  const id = parseInt(document.getElementById('edit-book-id').value);
+  const b = db.books.find(x => x.id === id);
+  if (!b) return;
+  const newCopies = parseInt(document.getElementById('edit-book-copies').value);
+  const borrowed = b.totalCopies - b.availableCopies;
+  if (newCopies < borrowed) return toast(`Cannot reduce below ${borrowed} (currently borrowed)`,'error');
+  b.title = document.getElementById('edit-book-title').value;
+  b.author = document.getElementById('edit-book-author').value;
+  b.genre = document.getElementById('edit-book-genre').value;
+  b.year = parseInt(document.getElementById('edit-book-year').value);
+  b.availableCopies = newCopies - borrowed;
+  b.totalCopies = newCopies;
+  save(); renderBooks(); closeModal('modal-edit-book');
+  toast('Book updated');
+}
+
+function deleteBook(id) {
+  const b = db.books.find(x => x.id === id);
+  if (!b) return;
+  if (b.availableCopies !== b.totalCopies) return toast('Cannot delete: copies still out','error');
+  if (!confirm(`Delete "${b.title}"?`)) return;
+  db.books = db.books.filter(x => x.id !== id);
+  save(); renderBooks(); toast('Book removed');
+}
+
+// ── Members ────────────────────────────────────────────────────────────────
+function renderMembers() {
+  const tbody = document.getElementById('members-table-body');
+  tbody.innerHTML = db.members.length === 0
+    ? '<tr><td colspan="7"><div class="empty-state"><div class="icon">👤</div><p>No members yet</p></div></td></tr>'
+    : db.members.map(m => `
+      <tr>
+        <td><code>#${m.id}</code></td>
+        <td><strong>${esc(m.name)}</strong></td>
+        <td>${esc(m.email)}</td>
+        <td>${esc(m.phone)}</td>
+        <td>${m.joinDate}</td>
+        <td>
+          <span class="badge ${m.borrowed.length===0?'badge-green':m.borrowed.length>=m.maxBorrow?'badge-red':'badge-gold'}">
+            ${m.borrowed.length}/${m.maxBorrow}
+          </span>
+        </td>
+        <td>
+          <button class="btn btn-ghost btn-sm" onclick="openEditMember(${m.id})">Edit</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteMember(${m.id})" style="margin-left:4px">Delete</button>
+        </td>
+      </tr>`).join('');
+}
+
+function addMember() {
+  const name    = document.getElementById('mem-name').value.trim();
+  const email   = document.getElementById('mem-email').value.trim();
+  const phone   = document.getElementById('mem-phone').value.trim();
+  const address = document.getElementById('mem-address').value.trim();
+
+  if (!name||!email||!phone||!address) return toast('Please fill all fields','error');
+  if (db.members.some(m => m.email === email)) return toast('Email already registered','error');
+
+  db.members.push({ id: db.nextMemberId++, name, email, phone, address, joinDate: today(), maxBorrow:3, borrowed:[] });
+  save(); clearMemberForm();
+  switchTab('members','list',document.querySelector('#page-members .tab'));
+  renderMembers(); toast(`${name} registered`);
+}
+
+function clearMemberForm() {
+  ['mem-name','mem-email','mem-phone','mem-address'].forEach(id => document.getElementById(id).value = '');
+}
+
+function openEditMember(id) {
+  const m = db.members.find(x => x.id === id);
+  if (!m) return;
+  document.getElementById('edit-mem-id').value = id;
+  document.getElementById('edit-mem-name').value = m.name;
+  document.getElementById('edit-mem-email').value = m.email;
+  document.getElementById('edit-mem-phone').value = m.phone;
+  document.getElementById('edit-mem-address').value = m.address;
+  openModal('modal-edit-member');
+}
+
+function saveEditMember() {
+  const id = parseInt(document.getElementById('edit-mem-id').value);
+  const m = db.members.find(x => x.id === id);
+  if (!m) return;
+  m.name    = document.getElementById('edit-mem-name').value;
+  m.email   = document.getElementById('edit-mem-email').value;
+  m.phone   = document.getElementById('edit-mem-phone').value;
+  m.address = document.getElementById('edit-mem-address').value;
+  save(); renderMembers(); closeModal('modal-edit-member'); toast('Member updated');
+}
+
+function deleteMember(id) {
+  const m = db.members.find(x => x.id === id);
+  if (!m) return;
+  if (m.borrowed.length > 0) return toast('Cannot remove member with active loans','error');
+  if (!confirm(`Remove ${m.name}?`)) return;
+  db.members = db.members.filter(x => x.id !== id);
+  save(); renderMembers(); toast('Member removed');
+}
+
+// ── Borrow ─────────────────────────────────────────────────────────────────
+function populateBorrowSelects() {
+  const ms = document.getElementById('borrow-member');
+  const bs = document.getElementById('borrow-book');
+  ms.innerHTML = '<option value="">— Select Member —</option>' +
+    db.members.map(m => `<option value="${m.id}">${esc(m.name)} (${m.borrowed.length}/${m.maxBorrow} borrowed)</option>`).join('');
+  bs.innerHTML = '<option value="">— Select Book —</option>' +
+    db.books.filter(b => b.availableCopies > 0)
+      .map(b => `<option value="${b.id}">${esc(b.title)} — ${b.availableCopies} avail.</option>`).join('');
+
+  ms.onchange = bs.onchange = () => {
+    const m = db.members.find(x => x.id == ms.value);
+    const b = db.books.find(x => x.id == bs.value);
+    const prev = document.getElementById('borrow-preview');
+    if (m && b) {
+      document.getElementById('borrow-preview-text').innerHTML =
+        `<strong>${esc(m.name)}</strong> will borrow <strong>${esc(b.title)}</strong> by ${esc(b.author)}.
+         Remaining quota: ${m.maxBorrow - m.borrowed.length - 1}/${m.maxBorrow}.`;
+      prev.style.display = 'block';
+    } else {
+      prev.style.display = 'none';
+    }
+  };
+}
+
+function borrowBook() {
+  const mid = parseInt(document.getElementById('borrow-member').value);
+  const bid = parseInt(document.getElementById('borrow-book').value);
+  if (!mid || !bid) return toast('Select both member and book','error');
+  const m = db.members.find(x => x.id === mid);
+  if (m && m.borrowed.length >= m.maxBorrow) return toast('Member has reached borrow limit','error');
+  if (m && m.borrowed.includes(bid)) return toast('Member already has this book','error');
+  if (borrowOp(mid, bid)) { populateBorrowSelects(); toast('Book borrowed successfully! ✓'); }
+  else toast('Could not complete borrow operation','error');
+}
+
+// ── Return ─────────────────────────────────────────────────────────────────
+function populateReturnSelects() {
+  const ms = document.getElementById('return-member');
+  const activeMembers = db.members.filter(m => m.borrowed.length > 0);
+  ms.innerHTML = '<option value="">— Select Member —</option>' +
+    activeMembers.map(m => `<option value="${m.id}">${esc(m.name)} (${m.borrowed.length} out)</option>`).join('');
+  document.getElementById('return-book').innerHTML = '<option value="">— Select Book —</option>';
+}
+
+function loadReturnBooks() {
+  const mid = parseInt(document.getElementById('return-member').value);
+  const m = db.members.find(x => x.id === mid);
+  const bs = document.getElementById('return-book');
+  bs.innerHTML = '<option value="">— Select Book —</option>';
+  if (m) {
+    m.borrowed.forEach(bid => {
+      const b = db.books.find(x => x.id === bid);
+      if (b) bs.innerHTML += `<option value="${b.id}">${esc(b.title)}</option>`;
+    });
+  }
+}
+
+function returnBook() {
+  const mid = parseInt(document.getElementById('return-member').value);
+  const bid = parseInt(document.getElementById('return-book').value);
+  if (!mid || !bid) return toast('Select member and book to return','error');
+  if (returnOp(mid, bid)) {
+    populateReturnSelects(); renderActiveLoans(); toast('Book returned successfully! ✓');
+  } else toast('Could not complete return','error');
+}
+
+function renderActiveLoans() {
+  const active = db.transactions.filter(t => !t.returned);
+  const el = document.getElementById('active-loans-list');
+  el.innerHTML = active.length === 0
+    ? '<div class="empty-state"><div class="icon">✅</div><p>No active loans</p></div>'
+    : active.map(t => `
+      <div class="loan-card">
+        <div class="loan-avatar">${t.memberName[0]}</div>
+        <div class="loan-info">
+          <div class="loan-title">${esc(t.bookTitle)}</div>
+          <div class="loan-sub">${esc(t.memberName)} · Borrowed: ${t.borrowDate}</div>
+        </div>
+        <span class="badge badge-gold">Active</span>
+      </div>`).join('');
+}
+
+// ── Transactions ───────────────────────────────────────────────────────────
+function renderTransactions() {
+  const filter = document.getElementById('tx-filter').value;
+  let txs = [...db.transactions].reverse();
+  if (filter === 'active') txs = txs.filter(t => !t.returned);
+  if (filter === 'returned') txs = txs.filter(t => t.returned);
+
+  const tbody = document.getElementById('tx-table-body');
+  tbody.innerHTML = txs.length === 0
+    ? '<tr><td colspan="6"><div class="empty-state"><p>No transactions</p></div></td></tr>'
+    : txs.map(t => `
+      <tr>
+        <td><code>#${t.id}</code></td>
+        <td>${esc(t.memberName)}</td>
+        <td>${esc(t.bookTitle)}</td>
+        <td>${t.borrowDate}</td>
+        <td>${t.returnDate || '<span style="color:var(--muted)">—</span>'}</td>
+        <td><span class="badge ${t.returned?'badge-green':'badge-gold'}">${t.returned?'Returned':'Active'}</span></td>
+      </tr>`).join('');
+}
+
+// ── Global Search ──────────────────────────────────────────────────────────
+function globalSearch(q) {
+  if (!q) return;
+  q = q.toLowerCase();
+  const bookResults = db.books.filter(b =>
+    b.title.toLowerCase().includes(q) || b.author.toLowerCase().includes(q));
+  if (bookResults.length > 0) {
+    document.querySelectorAll('.nav-item').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.nav-item')[1].classList.add('active');
+    navigate('books', document.querySelectorAll('.nav-item')[1]);
+    // Filter in table
+    const tbody = document.getElementById('books-table-body');
+    tbody.innerHTML = bookResults.map(b => `
+      <tr>
+        <td><code>#${b.id}</code></td>
+        <td><strong>${esc(b.title)}</strong></td>
+        <td>${esc(b.author)}</td>
+        <td><span class="badge badge-slate">${esc(b.genre)}</span></td>
+        <td>${b.year}</td>
+        <td>${b.availableCopies}/${b.totalCopies}</td>
+        <td><span class="badge ${b.availableCopies>0?'badge-green':'badge-red'}">${b.availableCopies>0?'Available':'Unavailable'}</span></td>
+        <td>
+          <button class="btn btn-ghost btn-sm" onclick="openEditBook(${b.id})">Edit</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteBook(${b.id})" style="margin-left:4px">Delete</button>
+        </td>
+      </tr>`).join('');
+  }
+}
+
+// ── Modals ─────────────────────────────────────────────────────────────────
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+// Click outside to close
+document.querySelectorAll('.modal-backdrop').forEach(el => {
+  el.addEventListener('click', e => { if (e.target === el) closeModal(el.id); });
+});
+
+// ── Toast ──────────────────────────────────────────────────────────────────
+function toast(msg, type='success') {
+  const el = document.createElement('div');
+  el.className = `toast toast-${type}`;
+  el.textContent = msg;
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 3200);
+}
+
+// ── Escape ─────────────────────────────────────────────────────────────────
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ── Init ───────────────────────────────────────────────────────────────────
+load();
+renderDashboard();
+</script>
+</body>
+</html>
